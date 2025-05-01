@@ -2,8 +2,8 @@
 
 ```package.json
     {
-      "mergeMain": "node ./nodejs/index.mjs --repoUrl=git@coding.xxx.com:xxx.git --baseBranch=main --targetFolder=xxx/xxxx
-      --sourceFolder=dist --buildCmd='npm run build'"
+          "mergeMain": "node ./node_modules/mergeintoorigin --repoName=xxxx --repoUrl=git@xxxx.com/xxxx.git --baseBranch=main --targetFolder=xxx/xxxx --sourceFolder=dist --buildCmd='npm run build'"
+
     }
 
 ```
@@ -16,4 +16,4 @@
 
 ##### --sourceFolder=dist 【本项目】子项目的 dist 文件夹（一般打包后都是叫 dist 文件夹，有的叫 build 文件夹请自行更换文件夹名称）
 
-##### --buildCmd='npm run build' 【本项目】子项目的打包命令理论上都是自己项目中的npm run build如果有特殊请自行更改自己项目中的打包命令 用于生成 dist 文件夹
+##### --buildCmd='npm run build' 【本项目】子项目的打包命令理论上都是自己项目中的 npm run build 如果有特殊请自行更改自己项目中的打包命令 用于生成 dist 文件夹

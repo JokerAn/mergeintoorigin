@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const args = minimist(process.argv.slice(2), {
-  string: ['repoName', 'repoUrl', 'targetFolder', 'sourceFolder', 'buildCmd', 'baseBranch']
+  string: ['repoUrl', 'targetFolder', 'sourceFolder', 'buildCmd', 'baseBranch']
 });
 
 function checkArgs(requiredArgs) {
@@ -21,17 +21,19 @@ function checkArgs(requiredArgs) {
   if (missing.length > 0) {
     console.error(
       `以下参数必须显式传递，缺失：${missing.join(', ')}\n` +
-      `示例：node ./nodejs/index.mjs --repoName=xxx --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`
+      `示例：node ./nodejs/index.mjs --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`
     );
     process.exit(1);
   }
 }
 
-const requiredArgs = ['repoName', 'repoUrl', 'targetFolder', 'sourceFolder', 'buildCmd', 'baseBranch'];
+const requiredArgs = ['repoUrl', 'targetFolder', 'sourceFolder', 'buildCmd', 'baseBranch'];
 checkArgs(requiredArgs);
 
-const repoName = args.repoName;
 const giteeRepoUrl = args.repoUrl;
+let giturlSplit = giteeRepoUrl.split('.git')[0].split('/');
+const repoName = giturlSplit[giturlSplit.length - 1];
+
 const targetFolder = args.targetFolder;
 const sourceFolder = args.sourceFolder;
 const buildCmd = args.buildCmd;
@@ -72,7 +74,7 @@ async function buildAndClone() {
     console.log('主要仓库文件夹已存在');
     clonePromise = Promise.resolve();
   } else {
-    console.log('主要仓库文件夹不存在，克隆主git仓库');
+    console.log('主要仓库文件夹不存在，克隆Gitee仓库');
     clonePromise = execPromise(`git clone ${giteeRepoUrl} ${repoPath}`);
   }
   await Promise.all([buildPromise, clonePromise]);
@@ -135,7 +137,7 @@ async function pushToParentGit() {
       return;
     }
 
-    await execPromise(`git add . && git commit -m '系统自动复制子集Git到${targetFolder}文件夹'`);
+    await execPromise(`git add . && git commit -m '系统自动复制子集Git到${targetFolder}文件夹${currentDate}'`);
     await execPromise(`git push --set-upstream origin ${newBranchName}`);
 
     console.log(`提交信息推送到新分支 ${newBranchName} 成功`);
@@ -148,7 +150,7 @@ async function pushToParentGit() {
       throw new Error(`删除操作被禁止，repoPath 不安全: ${repoPath}`);
     }
   } catch (error) {
-    console.error('推送提交信息到主仓库失败:', error);
+    console.error('推送提交信息到Gitee失败:', error);
   }
 }
 
