@@ -1,6 +1,6 @@
 {
   "name": "mergeintoorigin",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "将子git仓库打包后的dist文件夹合并到主git仓库中的指定文件夹中",
   "main": "index.js",
   "type": "module",
