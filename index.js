@@ -131,12 +131,6 @@ async function pushToParentGit() {
     await execPromise(`rm -rf ${targetFolderPath}/*`);
     await execPromise(`cp -r ${sourceFolderAbs}/* ${targetFolderPath}`);
 
-    const statusOutput = await execPromise('git status --porcelain');
-    if (statusOutput.trim() === '') {
-      console.log('代码没有变动，无需提交');
-      return;
-    }
-
     await execPromise(`git add . && git commit -m '系统自动复制子集Git到${targetFolder}文件夹${currentDate}'`);
     await execPromise(`git push --set-upstream origin ${newBranchName}`);
 
