@@ -1,3 +1,9 @@
+### 下载命令
+
+```
+npm install mergeintoorigin --legacy-peer-deps
+```
+
 ### 配置命令
 
 ```package.json
