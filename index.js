@@ -40,7 +40,7 @@ const buildCmd = args.buildCmd;
 const baseBranch = args.baseBranch;
 
 const currentDir = process.cwd();
-const nodejsDir = path.join(currentDir, 'nodejs');
+const nodejsDir = path.join(currentDir, 'linshi_nodejs_maingit');
 if (!fs.existsSync(nodejsDir)) {
   fs.mkdirSync(nodejsDir);
 }
@@ -50,7 +50,6 @@ function isSafeToDelete(p) {
   if (!p) return false;
   if (p === '/' || p.length < 10) return false;
   if (!path.isAbsolute(p)) return false;
-  if (path.basename(p) !== repoName) return false;
   if (!p.startsWith(nodejsDir)) return false;
   return true;
 }
@@ -133,10 +132,14 @@ async function pushToParentGit() {
     const statusOutput = await execPromise('git status --porcelain');
     if (statusOutput.trim() === '') {
       console.log('本地代码与远程主Git仓库中的一样，没有变动，无需提交，即将删除主git文件夹');
-      // 删除主git文件夹
-      if (isSafeToDelete(repoPath)) {
-        await execPromise(`rm -rf ${repoPath}`);
-        console.log(`本地仓库文件夹已删除: ${repoPath}`);
+      await execPromise(`cd ${currentDir}`);
+      // 删除主git文件夹 包含父级文件夹 linshi_nodejs_maingit
+      if (isSafeToDelete(nodejsDir)) {
+        console.log(`正在删除本地仓库文件夹: ${nodejsDir}`);
+        await execPromise(`rm -rf ${nodejsDir}`);
+        console.log(`本地仓库文件夹已删除: ${nodejsDir}`);
+      } else {
+        throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
       }
       return;
     }
@@ -145,12 +148,17 @@ async function pushToParentGit() {
 
     console.log(`提交信息推送到新分支 ${newBranchName} 成功`);
 
-    if (isSafeToDelete(repoPath)) {
-      console.log(`正在删除本地仓库文件夹: ${repoPath}`);
-      await execPromise(`rm -rf ${repoPath}`);
-      console.log(`本地仓库文件夹已删除: ${repoPath}`);
+    if (isSafeToDelete(nodejsDir)) {
+      await execPromise(`cd ${currentDir}`);
+      if (isSafeToDelete(nodejsDir)) {
+        console.log(`正在删除本地仓库文件夹: ${nodejsDir}`);
+        await execPromise(`rm -rf ${nodejsDir}`);
+        console.log(`本地仓库文件夹已删除: ${nodejsDir}`);
+      } else {
+        throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
+      }
     } else {
-      throw new Error(`删除操作被禁止，repoPath 不安全: ${repoPath}`);
+      throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
     }
   } catch (error) {
     console.error(`推送提交信息到主git${giteeRepoUrl}失败:`, error);
