@@ -74,7 +74,7 @@ async function buildAndClone() {
     console.log('主要仓库文件夹已存在');
     clonePromise = Promise.resolve();
   } else {
-    console.log('主要仓库文件夹不存在，克隆Gitee仓库');
+    console.log(`主要仓库文件夹不存在，克隆主git仓库${giteeRepoUrl}`);
     clonePromise = execPromise(`git clone ${giteeRepoUrl} ${repoPath}`);
   }
   await Promise.all([buildPromise, clonePromise]);
@@ -150,7 +150,7 @@ async function pushToParentGit() {
       throw new Error(`删除操作被禁止，repoPath 不安全: ${repoPath}`);
     }
   } catch (error) {
-    console.error('推送提交信息到Gitee失败:', error);
+    console.error(`推送提交信息到主git${giteeRepoUrl}失败:`, error);
   }
 }
 
