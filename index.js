@@ -130,7 +130,16 @@ async function pushToParentGit() {
 
     await execPromise(`rm -rf ${targetFolderPath}/*`);
     await execPromise(`cp -r ${sourceFolderAbs}/* ${targetFolderPath}`);
-
+    const statusOutput = await execPromise('git status --porcelain');
+    if (statusOutput.trim() === '') {
+      console.log('本地代码与远程主Git仓库中的一样，没有变动，无需提交，即将删除主git文件夹');
+      // 删除主git文件夹
+      if (isSafeToDelete(repoPath)) {
+        await execPromise(`rm -rf ${repoPath}`);
+        console.log(`本地仓库文件夹已删除: ${repoPath}`);
+      }
+      return;
+    }
     await execPromise(`git add . && git commit -m '系统自动复制子集Git到${targetFolder}文件夹${currentDate}'`);
     await execPromise(`git push --set-upstream origin ${newBranchName}`);
 
