@@ -21,7 +21,7 @@ function checkArgs(requiredArgs) {
   if (missing.length > 0) {
     console.error(
       `以下参数必须显式传递，缺失：${missing.join(', ')}\n` +
-      `示例：node ./nodejs/index.mjs --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`
+      `示例：node ./node_modules/mergeintoorigin --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`
     );
     process.exit(1);
   }
