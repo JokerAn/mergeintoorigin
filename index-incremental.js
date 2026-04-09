@@ -33,7 +33,8 @@ const repoName = giturlSplit[giturlSplit.length - 1];
 
 const targetFolder = args.targetFolder;
 const sourceFolder = args.sourceFolder;
-const buildCmd = args.buildCmd;
+// 去除首尾单引号/双引号：Windows CMD 不识别单引号，会把 'npm run build' 当字面值传入
+const buildCmd = args.buildCmd.replace(/^(['"])(.*?)\1$/, "$2");
 const baseBranch = args.baseBranch;
 
 const currentDir = process.cwd();
@@ -53,7 +54,24 @@ function isSafeToDelete(p) {
 
 function execPromise(command, options = {}) {
   return new Promise((resolve, reject) => {
-    exec(command, options, (error, stdout, stderr) => {
+    let finalCommand = command;
+
+    if (process.platform === "win32") {
+      // npm/npx 在 Windows 上需要加 .cmd 后缀才能在 exec 中调用
+      if (/^npm\s/.test(finalCommand)) {
+        finalCommand = finalCommand.replace(/^npm\s/, "npm.cmd ");
+      } else if (/^npx\s/.test(finalCommand)) {
+        finalCommand = finalCommand.replace(/^npx\s/, "npx.cmd ");
+      }
+
+      // rm -rf 转 Windows 的 rmdir 命令
+      if (finalCommand.startsWith("rm -rf ")) {
+        const dirPath = finalCommand.replace("rm -rf ", "").trim();
+        finalCommand = `rmdir /s /q "${dirPath}"`;
+      }
+    }
+
+    exec(finalCommand, options, (error, stdout, stderr) => {
       if (error) {
         reject(error + "\n" + stderr);
       } else {
@@ -133,7 +151,9 @@ async function buildAndClone() {
     clonePromise = Promise.resolve();
   } else {
     console.log(`主要仓库文件夹不存在，克隆主git仓库${giteeRepoUrl}`);
-    clonePromise = execPromise(`git clone ${giteeRepoUrl} ${repoPath}`);
+    // 路径加引号，避免 Windows 路径含空格时报错
+    clonePromise = execPromise(`git clone ${giteeRepoUrl} "${repoPath}"`);
+
   }
   await Promise.all([buildPromise, clonePromise]);
 }
