@@ -54,7 +54,9 @@ function isSafeToDelete(p) {
 
 function execPromise(command, options = {}) {
   return new Promise((resolve, reject) => {
-    let finalCommand = command;
+    // 防御性剥离首尾引号：Windows cmd.exe 不处理单引号，会原样传入 Node.js
+    // 例如 buildCmd="'npm run build'" 顶层正则若失效，这里作为最后兜底
+    let finalCommand = command.replace(/^(['"])([\s\S]*)\1$/, "$2").trim();
 
     if (process.platform === "win32") {
       // npm/npx 在 Windows 上需要加 .cmd 后缀才能在 exec 中调用
@@ -64,9 +66,9 @@ function execPromise(command, options = {}) {
         finalCommand = finalCommand.replace(/^npx\s/, "npx.cmd ");
       }
 
-      // rm -rf 转 Windows 的 rmdir 命令
+      // rm -rf 转 Windows 的 rmdir 命令（路径加引号，防止路径含空格时报错）
       if (finalCommand.startsWith("rm -rf ")) {
-        const dirPath = finalCommand.replace("rm -rf ", "").trim();
+        const dirPath = finalCommand.replace("rm -rf ", "").trim().replace(/^"|"$/g, "");
         finalCommand = `rmdir /s /q "${dirPath}"`;
       }
     }
