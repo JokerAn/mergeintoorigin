@@ -1,0 +1,50 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # 开启 provenance 需要的权限
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      # 校验 tag 版本号和 package.json 版本号是否一致，不一致则报错
+      - name: Check tag version matches package.json
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "Tag version: $TAG_VERSION"
+          echo "Package.json version: $PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "❌ tag 版本 v$TAG_VERSION 与 package.json 中版本 $PKG_VERSION 不一致，请先更新 package.json"
+            exit 1
+          fi
+          echo "✅ 版本一致，继续发布"
+
+      - name: Install dependencies
+        run: npm install
+
+      # 该项目无需构建，直接发布源码到 npm
+      - name: Publish to npm (with provenance)
+        if: ${{ github.event.repository.private == false }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm (without provenance for private repos)
+        if: ${{ github.event.repository.private == true }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
