@@ -19,7 +19,7 @@ function checkArgs(requiredArgs) {
     }
   }
   if (missing.length > 0) {
-    console.error(`以下参数必须显式传递，缺失：${missing.join(", ")}\n` + `示例：node ./node_modules/mergeintoorigin/index-incremental.js --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`);
+    console.error(`以下参数必须显式传递，缺失：${missing.join(", ")}\n` + `示例：node ./node_modules/mergeintoorigin/index-incremental.js --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd=\"npm run build\" --baseBranch=main\n提示：buildCmd 请使用转义双引号 \\\" 括起来，避免 Windows/Mac 跨平台兼容问题`);
     process.exit(1);
   }
 }
