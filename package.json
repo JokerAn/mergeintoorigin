@@ -1,11 +1,15 @@
 {
   "name": "mergeintoorigin",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "将子git仓库打包后的dist文件夹合并到主git仓库中的指定文件夹中",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JokerAn/mergeintoorigin.git"
   },
   "author": "拂尘子",
   "license": "ISC",
