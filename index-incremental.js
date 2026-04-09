@@ -75,6 +75,13 @@ function execPromise(command, options = {}) {
 
     exec(finalCommand, options, (error, stdout, stderr) => {
       if (error) {
+        // 如果是 build 命令失败且 stderr 包含 'rm'，给出 Windows 专属提示
+        const isRmError = stderr && (stderr.includes("'rm'") || stderr.includes('"rm"'));
+        if (isRmError && process.platform === "win32") {
+          console.error("\n[Windows 兼容性提示] build 脚本中含有 'rm' 命令，Windows 不支持。");
+          console.error("  解决方案：在你的项目中，将 build 脚本里的 rm -rf 改为 rimraf");
+          console.error("  例如：npm install -D rimraf，然后把 rm -rf dist 改为 rimraf dist\n");
+        }
         reject(error + "\n" + stderr);
       } else {
         resolve(stdout);
@@ -146,7 +153,8 @@ function incrementalCopy(srcDir, destDir) {
 }
 
 async function buildAndClone() {
-  const buildPromise = execPromise(buildCmd);
+  // 显式指定 cwd，确保 build 始终在项目根目录执行（Windows 下尤其重要）
+  const buildPromise = execPromise(buildCmd, { cwd: currentDir });
   let clonePromise;
   if (fs.existsSync(repoPath)) {
     console.log("主要仓库文件夹已存在");
