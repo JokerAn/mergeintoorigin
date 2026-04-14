@@ -1,14 +1,44 @@
-import { exec } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import minimist from 'minimist';
+import { exec } from "child_process";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import minimist from "minimist";
+
+// 跨平台：递归复制文件夹（替代 cp -r）
+function copyDirSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// 跨平台：递归删除文件夹（替代 rm -rf）
+function removeDirSync(dirPath) {
+  if (fs.existsSync(dirPath)) {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  }
+}
+
+// 跨平台：清空文件夹内容但保留文件夹本身（替代 rm -rf dir/*）
+function cleanDirSync(dirPath) {
+  if (fs.existsSync(dirPath)) {
+    for (const entry of fs.readdirSync(dirPath)) {
+      fs.rmSync(path.join(dirPath, entry), { recursive: true, force: true });
+    }
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const args = minimist(process.argv.slice(2), {
-  string: ['repoUrl', 'targetFolder', 'sourceFolder', 'buildCmd', 'baseBranch']
+  string: ["repoUrl", "targetFolder", "sourceFolder", "buildCmd", "baseBranch"],
 });
 
 function checkArgs(requiredArgs) {
@@ -19,19 +49,16 @@ function checkArgs(requiredArgs) {
     }
   }
   if (missing.length > 0) {
-    console.error(
-      `以下参数必须显式传递，缺失：${missing.join(', ')}\n` +
-      `示例：node ./node_modules/mergeintoorigin --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`
-    );
+    console.error(`以下参数必须显式传递，缺失：${missing.join(", ")}\n` + `示例：node ./node_modules/mergeintoorigin --repoUrl=xxx --targetFolder=xxx --sourceFolder=xxx --buildCmd="npm run build" --baseBranch=main`);
     process.exit(1);
   }
 }
 
-const requiredArgs = ['repoUrl', 'targetFolder', 'sourceFolder', 'buildCmd', 'baseBranch'];
+const requiredArgs = ["repoUrl", "targetFolder", "sourceFolder", "buildCmd", "baseBranch"];
 checkArgs(requiredArgs);
 
 const giteeRepoUrl = args.repoUrl;
-let giturlSplit = giteeRepoUrl.split('.git')[0].split('/');
+let giturlSplit = giteeRepoUrl.split(".git")[0].split("/");
 const repoName = giturlSplit[giturlSplit.length - 1];
 
 const targetFolder = args.targetFolder;
@@ -40,7 +67,7 @@ const buildCmd = args.buildCmd;
 const baseBranch = args.baseBranch;
 
 const currentDir = process.cwd();
-const nodejsDir = path.join(currentDir, 'linshi_nodejs_maingit');
+const nodejsDir = path.join(currentDir, "linshi_nodejs_maingit");
 if (!fs.existsSync(nodejsDir)) {
   fs.mkdirSync(nodejsDir);
 }
@@ -48,7 +75,7 @@ const repoPath = path.join(nodejsDir, repoName);
 
 function isSafeToDelete(p) {
   if (!p) return false;
-  if (p === '/' || p.length < 10) return false;
+  if (p === "/" || p.length < 10) return false;
   if (!path.isAbsolute(p)) return false;
   if (!p.startsWith(nodejsDir)) return false;
   return true;
@@ -58,7 +85,7 @@ function execPromise(command, options = {}) {
   return new Promise((resolve, reject) => {
     exec(command, options, (error, stdout, stderr) => {
       if (error) {
-        reject(error + '\n' + stderr);
+        reject(error + "\n" + stderr);
       } else {
         resolve(stdout);
       }
@@ -70,11 +97,11 @@ async function buildAndClone() {
   const buildPromise = execPromise(buildCmd);
   let clonePromise;
   if (fs.existsSync(repoPath)) {
-    console.log('主要仓库文件夹已存在');
+    console.log("主要仓库文件夹已存在");
     clonePromise = Promise.resolve();
   } else {
     console.log(`主要仓库文件夹不存在，克隆主git仓库${giteeRepoUrl}`);
-    clonePromise = execPromise(`git clone ${giteeRepoUrl} ${repoPath}`);
+    clonePromise = execPromise(`git clone "${giteeRepoUrl}" "${repoPath}"`);
   }
   await Promise.all([buildPromise, clonePromise]);
 }
@@ -88,16 +115,16 @@ async function pushToParentGit() {
 
     await execPromise(`git checkout ${baseBranch} && git pull`);
 
-    const gitUserName = (await execPromise('git config user.name')).trim();
+    const gitUserName = (await execPromise("git config user.name")).trim();
 
     const getFormattedDate = () => {
       const currentDate = new Date();
       const year = currentDate.getFullYear();
-      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-      const day = String(currentDate.getDate()).padStart(2, '0');
-      const hours = String(currentDate.getHours()).padStart(2, '0');
-      const minutes = String(currentDate.getMinutes()).padStart(2, '0');
-      const seconds = String(currentDate.getSeconds()).padStart(2, '0');
+      const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+      const day = String(currentDate.getDate()).padStart(2, "0");
+      const hours = String(currentDate.getHours()).padStart(2, "0");
+      const minutes = String(currentDate.getMinutes()).padStart(2, "0");
+      const seconds = String(currentDate.getSeconds()).padStart(2, "0");
       return `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
     };
 
@@ -108,9 +135,7 @@ async function pushToParentGit() {
     await execPromise(`git checkout -b ${newBranchName}`);
 
     // 绝对路径处理
-    const sourceFolderAbs = path.isAbsolute(sourceFolder)
-      ? sourceFolder
-      : path.resolve(currentDir, sourceFolder);
+    const sourceFolderAbs = path.isAbsolute(sourceFolder) ? sourceFolder : path.resolve(currentDir, sourceFolder);
 
     const targetFolderPath = path.join(repoPath, targetFolder);
 
@@ -124,35 +149,34 @@ async function pushToParentGit() {
     }
 
     if (!fs.existsSync(targetFolderPath)) {
-      await execPromise(`mkdir -p ${targetFolderPath}`);
+      fs.mkdirSync(targetFolderPath, { recursive: true });
     }
 
-    await execPromise(`rm -rf ${targetFolderPath}/*`);
-    await execPromise(`cp -r ${sourceFolderAbs}/* ${targetFolderPath}`);
-    const statusOutput = await execPromise('git status --porcelain');
-    if (statusOutput.trim() === '') {
-      console.log('本地代码与远程主Git仓库中的一样，没有变动，无需提交，即将删除主git文件夹');
-      await execPromise(`cd ${currentDir}`);
+    cleanDirSync(targetFolderPath);
+    copyDirSync(sourceFolderAbs, targetFolderPath);
+    const statusOutput = await execPromise("git status --porcelain");
+    if (statusOutput.trim() === "") {
+      console.log("本地代码与远程主Git仓库中的一样，没有变动，无需提交，即将删除主git文件夹");
       // 删除主git文件夹 包含父级文件夹 linshi_nodejs_maingit
       if (isSafeToDelete(nodejsDir)) {
         console.log(`正在删除本地仓库文件夹: ${nodejsDir}`);
-        await execPromise(`rm -rf ${nodejsDir}`);
+        removeDirSync(nodejsDir);
         console.log(`本地仓库文件夹已删除: ${nodejsDir}`);
       } else {
         throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
       }
       return;
     }
-    await execPromise(`git add . && git commit -m '系统自动复制子集Git到${targetFolder}文件夹${currentDate}'`);
+    await execPromise(`git add . && git commit -m "[增量发版] 系统自动复制子集Git到${targetFolder}文件夹${currentDate}"`);
     await execPromise(`git push --set-upstream origin ${newBranchName}`);
 
     console.log(`提交信息推送到新分支 ${newBranchName} 成功`);
 
     if (isSafeToDelete(nodejsDir)) {
-      await execPromise(`cd ${currentDir}`);
+      process.chdir(currentDir);
       if (isSafeToDelete(nodejsDir)) {
         console.log(`正在删除本地仓库文件夹: ${nodejsDir}`);
-        await execPromise(`rm -rf ${nodejsDir}`);
+        removeDirSync(nodejsDir);
         console.log(`本地仓库文件夹已删除: ${nodejsDir}`);
       } else {
         throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
@@ -170,6 +194,6 @@ async function pushToParentGit() {
     await buildAndClone();
     await pushToParentGit();
   } catch (error) {
-    console.error('主流程错误', error);
+    console.error("主流程错误", error);
   }
 })();

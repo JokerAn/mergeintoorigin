@@ -7,6 +7,13 @@ import minimist from "minimist";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 跨平台：递归删除文件夹（替代 rm -rf）
+function removeDirSync(dirPath) {
+  if (fs.existsSync(dirPath)) {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  }
+}
+
 const args = minimist(process.argv.slice(2), {
   string: ["repoUrl", "targetFolder", "sourceFolder", "buildCmd", "baseBranch"],
 });
@@ -162,8 +169,7 @@ async function buildAndClone() {
   } else {
     console.log(`主要仓库文件夹不存在，克隆主git仓库${giteeRepoUrl}`);
     // 路径加引号，避免 Windows 路径含空格时报错
-    clonePromise = execPromise(`git clone ${giteeRepoUrl} "${repoPath}"`);
-
+    clonePromise = execPromise(`git clone "${giteeRepoUrl}" "${repoPath}"`);
   }
   await Promise.all([buildPromise, clonePromise]);
 }
@@ -240,27 +246,26 @@ async function pushToParentGit() {
     const statusOutput = await execPromise("git status --porcelain");
     if (statusOutput.trim() === "") {
       console.log("本地代码与远程主Git仓库中的一样，没有变动，无需提交，即将删除主git文件夹");
-      await execPromise(`cd ${currentDir}`);
       // 删除主git文件夹 包含父级文件夹 linshi_nodejs_maingit
       if (isSafeToDelete(nodejsDir)) {
         console.log(`正在删除本地仓库文件夹: ${nodejsDir}`);
-        await execPromise(`rm -rf ${nodejsDir}`);
+        removeDirSync(nodejsDir);
         console.log(`本地仓库文件夹已删除: ${nodejsDir}`);
       } else {
         throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
       }
       return;
     }
-    await execPromise(`git add . && git commit -m '[增量发版] 系统自动复制子集Git到${targetFolder}文件夹${currentDate}'`);
+    await execPromise(`git add . && git commit -m "[增量发版] 系统自动复制子集Git到${targetFolder}文件夹${currentDate}"`);
     await execPromise(`git push --set-upstream origin ${newBranchName}`);
 
     console.log(`提交信息推送到新分支 ${newBranchName} 成功`);
 
     if (isSafeToDelete(nodejsDir)) {
-      await execPromise(`cd ${currentDir}`);
+      process.chdir(currentDir);
       if (isSafeToDelete(nodejsDir)) {
         console.log(`正在删除本地仓库文件夹: ${nodejsDir}`);
-        await execPromise(`rm -rf ${nodejsDir}`);
+        removeDirSync(nodejsDir);
         console.log(`本地仓库文件夹已删除: ${nodejsDir}`);
       } else {
         throw new Error(`删除操作被禁止，repoPath 不安全: ${nodejsDir}`);
