@@ -97,6 +97,23 @@ function execPromise(command, options = {}) {
   });
 }
 
+async function isGitRepositoryRoot(directoryPath) {
+  if (!fs.existsSync(path.join(directoryPath, ".git"))) {
+    return false;
+  }
+
+  try {
+    const gitRoot = (await execPromise("git rev-parse --show-toplevel", { cwd: directoryPath })).trim();
+    const normalizedGitRoot = fs.realpathSync(gitRoot);
+    const normalizedDirectoryPath = fs.realpathSync(directoryPath);
+    return process.platform === "win32"
+      ? normalizedGitRoot.toLowerCase() === normalizedDirectoryPath.toLowerCase()
+      : normalizedGitRoot === normalizedDirectoryPath;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 增量复制文件夹
  * - 保留目标文件夹中已有的文件（不删除旧文件）
@@ -163,13 +180,25 @@ async function buildAndClone() {
   // 显式指定 cwd，确保 build 始终在项目根目录执行（Windows 下尤其重要）
   const buildPromise = execPromise(buildCmd, { cwd: currentDir });
   let clonePromise;
-  if (fs.existsSync(repoPath)) {
-    console.log("主要仓库文件夹已存在");
+  if (await isGitRepositoryRoot(repoPath)) {
+    console.log("主要仓库文件夹已存在且校验通过");
     clonePromise = Promise.resolve();
   } else {
-    console.log(`主要仓库文件夹不存在，克隆主git仓库${giteeRepoUrl}`);
-    // 路径加引号，避免 Windows 路径含空格时报错
-    clonePromise = execPromise(`git clone "${giteeRepoUrl}" "${repoPath}"`);
+    if (fs.existsSync(repoPath)) {
+      if (!isSafeToDelete(repoPath)) {
+        throw new Error(`检测到无效临时仓库，但路径不安全，拒绝删除: ${repoPath}`);
+      }
+      console.warn(`检测到无效临时仓库，删除后重新克隆: ${repoPath}`);
+      removeDirSync(repoPath);
+    }
+
+    console.log(`克隆主git仓库${giteeRepoUrl}`);
+    clonePromise = execPromise(`git clone "${giteeRepoUrl}" "${repoPath}"`).catch((error) => {
+      if (isSafeToDelete(repoPath)) {
+        removeDirSync(repoPath);
+      }
+      throw error;
+    });
   }
   await Promise.all([buildPromise, clonePromise]);
 }
@@ -178,6 +207,9 @@ async function pushToParentGit() {
   try {
     if (!isSafeToDelete(repoPath)) {
       throw new Error(`repoPath 不安全: ${repoPath}`);
+    }
+    if (!(await isGitRepositoryRoot(repoPath))) {
+      throw new Error(`临时目录不是独立的 Git 仓库，拒绝执行分支操作: ${repoPath}`);
     }
     process.chdir(repoPath);
 
